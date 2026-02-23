@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solitaire</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Particle / felt texture overlay -->
+  <div class="felt-overlay"></div>
+
+  <header>
+    <div class="header-left">
+      <span class="logo">&#9824; Solitaire</span>
+    </div>
+    <div class="header-center">
+      <div class="stat-box">
+        <span class="stat-label">SCORE</span>
+        <span class="stat-value" id="score">0</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">MOVES</span>
+        <span class="stat-value" id="moves">0</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">TIME</span>
+        <span class="stat-value" id="timer">00:00</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <button id="undo-btn" title="Undo">&#8630; Undo</button>
+      <button id="help-btn">&#63; How to Play</button>
+      <button id="new-game-btn">&#9654; New Game</button>
+    </div>
+  </header>
+
+  <main id="game-area">
+
+    <!-- Top row: stock, waste, spacers, foundations -->
+    <div id="top-row">
+      <div class="pile stock-pile" id="stock" title="Click to draw"></div>
+      <div class="pile waste-pile" id="waste"></div>
+      <div class="spacer"></div>
+      <div class="pile foundation-pile" id="foundation-0" data-suit="♠" data-index="0"></div>
+      <div class="pile foundation-pile" id="foundation-1" data-suit="♥" data-index="1"></div>
+      <div class="pile foundation-pile" id="foundation-2" data-suit="♦" data-index="2"></div>
+      <div class="pile foundation-pile" id="foundation-3" data-suit="♣" data-index="3"></div>
+    </div>
+
+    <!-- Tableau -->
+    <div id="tableau-row">
+      <div class="pile tableau-pile" id="tableau-0" data-index="0"></div>
+      <div class="pile tableau-pile" id="tableau-1" data-index="1"></div>
+      <div class="pile tableau-pile" id="tableau-2" data-index="2"></div>
+      <div class="pile tableau-pile" id="tableau-3" data-index="3"></div>
+      <div class="pile tableau-pile" id="tableau-4" data-index="4"></div>
+      <div class="pile tableau-pile" id="tableau-5" data-index="5"></div>
+      <div class="pile tableau-pile" id="tableau-6" data-index="6"></div>
+    </div>
+
+  </main>
+
+  <!-- Instructions modal -->
+  <div id="help-overlay" class="hidden">
+    <div class="help-box">
+      <button class="close-btn" id="help-close">&#10005;</button>
+      <h2>&#9824; How to Play Solitaire</h2>
+
+      <div class="help-section">
+        <h3>Objective</h3>
+        <p>Move all 52 cards to the four <strong>Foundation</strong> piles — one per suit — built up from Ace to King (A 2 3 … Q K).</p>
+      </div>
+
+      <div class="help-section">
+        <h3>The Layout</h3>
+        <ul>
+          <li><strong>Stock (top-left):</strong> The face-down draw pile. Click it to flip cards to the Waste pile.</li>
+          <li><strong>Waste (next to Stock):</strong> Flipped cards you can play. Only the top card is available.</li>
+          <li><strong>Foundations (top-right, 4 piles):</strong> Build each suit from A → K.</li>
+          <li><strong>Tableau (7 columns):</strong> Main playing area. Face-down cards flip when they become the top card.</li>
+        </ul>
+      </div>
+
+      <div class="help-section">
+        <h3>Rules</h3>
+        <ul>
+          <li>On the Tableau, stack cards in <strong>descending rank</strong> and <strong>alternating color</strong> (e.g. red 7 on black 8).</li>
+          <li>Only a <strong>King</strong> (or a stack starting with a King) can be placed on an empty Tableau column.</li>
+          <li>Only an <strong>Ace</strong> starts a Foundation pile. Build up in same-suit order.</li>
+          <li>When the Stock is empty, click it again to <strong>recycle</strong> the Waste (−100 pts).</li>
+          <li>You can move an entire face-up <strong>run</strong> of Tableau cards at once by dragging the bottom card of the run.</li>
+        </ul>
+      </div>
+
+      <div class="help-section">
+        <h3>Controls</h3>
+        <table class="controls-table">
+          <tr><td>&#128432; Drag card</td><td>Move a card or run to a valid pile</td></tr>
+          <tr><td>&#128432; Double-click card</td><td>Auto-send card to its Foundation</td></tr>
+          <tr><td>&#128432; Click Stock</td><td>Draw next card (or recycle Waste)</td></tr>
+          <tr><td>&#8630; Undo button</td><td>Take back your last move (up to 50)</td></tr>
+          <tr><td>&#9654; New Game button</td><td>Deal a fresh game</td></tr>
+        </table>
+      </div>
+
+      <div class="help-section">
+        <h3>Scoring</h3>
+        <table class="controls-table">
+          <tr><td>Waste → Tableau</td><td>+5 pts</td></tr>
+          <tr><td>Waste → Foundation</td><td>+10 pts</td></tr>
+          <tr><td>Tableau → Foundation</td><td>+10 pts</td></tr>
+          <tr><td>Flip a face-down card</td><td>+5 pts</td></tr>
+          <tr><td>Recycle Stock</td><td>−100 pts</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Win overlay -->
+  <div id="win-overlay" class="hidden">
+    <div class="win-box">
+      <div class="win-icon">&#127881;</div>
+      <h1>You Win!</h1>
+      <p id="win-stats"></p>
+      <button id="win-new-game-btn">Play Again</button>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
