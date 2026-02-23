@@ -17,6 +17,11 @@ const SCORE_TABLEAU_TO_FOUNDATION = 10;
 const SCORE_FLIP_CARD         = 5;
 const SCORE_RECYCLE_STOCK     = -100;
 
+const DEFAULT_CARD_HEIGHT      = 126;   // px – fallback when CSS var unavailable
+const DRAG_STACK_OFFSET_RATIO  = 0.38;  // fraction of card height between stacked drag clones
+const TOUCH_DRAG_THRESHOLD     = 8;     // px of movement before a touch becomes a drag
+const DOUBLE_TAP_MS            = 400;   // max ms between taps to count as double-tap
+
 /* ── State ──────────────────────────────────────────────────── */
 let deck        = [];
 let stock       = [];
@@ -157,11 +162,14 @@ function renderFoundations() {
 
 /* ── Tableau ───────────────────────────────────────────────── */
 function renderTableau(deal = false) {
+  const CARD_H = parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue('--card-h')
+  ) || DEFAULT_CARD_HEIGHT;
   tableau.forEach((pile, ci) => {
     const el = $tableau[ci];
     el.innerHTML = '';
-    const FACE_DOWN_OFFSET = 20;
-    const FACE_UP_OFFSET   = 30;
+    const FACE_DOWN_OFFSET = Math.round(CARD_H * 0.16);
+    const FACE_UP_OFFSET   = Math.round(CARD_H * 0.24);
     let top = 0;
     pile.forEach((card, ri) => {
       const cardEl = makeCardEl(card, ri, 'tableau', ci);
@@ -176,8 +184,8 @@ function renderTableau(deal = false) {
     });
     // Grow pile height
     const lastCard = pile[pile.length - 1];
-    const finalH   = top + (lastCard ? 126 : 0);
-    el.style.minHeight = `${Math.max(126, finalH)}px`;
+    const finalH   = top + (lastCard ? CARD_H : 0);
+    el.style.minHeight = `${Math.max(CARD_H, finalH)}px`;
   });
 }
 
@@ -213,6 +221,7 @@ function makeCardEl(card, idx, zone, pileIdx) {
   if (zone !== 'foundation') {
     el.addEventListener('mousedown', onCardMouseDown);
     el.addEventListener('dblclick',  onDoubleClick);
+    el.addEventListener('touchstart', onCardTouchStart, { passive: false });
   }
   return el;
 }
@@ -265,6 +274,14 @@ let dragData  = null;   // { zone, pileIdx, cardIdx, cards[] }
 let dragProxy = null;   // floating DOM clone(s)
 let dragOffX  = 0;
 let dragOffY  = 0;
+
+// Touch drag state
+let touchDragging = false;
+let touchStartX   = 0;
+let touchStartY   = 0;
+let touchCardEl   = null;
+let lastTapEl     = null;
+let lastTapTime   = 0;
 
 function onCardMouseDown(e) {
   // Only primary button; ignore if a modal is open
@@ -364,6 +381,145 @@ function onMouseUp(e) {
   );
 
   if (target) commitDrop(target);
+  dragData = null;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TOUCH  DRAG  &  DROP
+   ═══════════════════════════════════════════════════════════════ */
+function onCardTouchStart(e) {
+  if (e.touches.length !== 1) return;
+  if (!document.getElementById('help-overlay').classList.contains('hidden')) return;
+
+  const touch = e.touches[0];
+  const el    = e.currentTarget;
+  const zone  = el.dataset.zone;
+  const pi    = parseInt(el.dataset.pile);
+  const ci    = parseInt(el.dataset.idx);
+  let cards   = [];
+
+  if (zone === 'waste') {
+    if (!waste.length) return;
+    cards = [waste[waste.length - 1]];
+    dragData = { zone, pileIdx: pi, cardIdx: waste.length - 1, cards };
+  } else if (zone === 'tableau') {
+    const pile = tableau[pi];
+    if (!pile[ci] || !pile[ci].faceUp) return;
+    cards = pile.slice(ci);
+    dragData = { zone, pileIdx: pi, cardIdx: ci, cards };
+  } else {
+    return;
+  }
+
+  e.preventDefault();
+
+  touchStartX   = touch.clientX;
+  touchStartY   = touch.clientY;
+  touchCardEl   = el;
+  touchDragging = false;
+
+  document.addEventListener('touchmove',   onTouchMove,   { passive: false });
+  document.addEventListener('touchend',    onTouchEnd);
+  document.addEventListener('touchcancel', onTouchCancel);
+}
+
+function _buildDragProxy(el, cards, startX, startY) {
+  dragProxy = document.createElement('div');
+  dragProxy.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;';
+  const CARD_W       = el.offsetWidth;
+  const CARD_H       = el.offsetHeight;
+  const STACK_OFFSET = Math.round(CARD_H * DRAG_STACK_OFFSET_RATIO);
+  dragProxy.style.width  = CARD_W + 'px';
+  dragProxy.style.height = (CARD_H + (cards.length - 1) * STACK_OFFSET) + 'px';
+
+  cards.forEach((card, i) => {
+    const clone = makeCardEl(card, i, '__drag__', -1);
+    clone.style.cssText =
+      `position:absolute;top:${i * STACK_OFFSET}px;left:0;` +
+      `width:${CARD_W}px;height:${CARD_H}px;` +
+      `box-shadow:0 12px 32px rgba(0,0,0,.7);transform:scale(1.06) rotate(1.5deg);`;
+    dragProxy.appendChild(clone);
+  });
+
+  const rect = el.getBoundingClientRect();
+  dragOffX = startX - rect.left;
+  dragOffY = startY - rect.top;
+  document.body.appendChild(dragProxy);
+  document.body.classList.add('is-dragging');
+
+  el.classList.add('drag-ghost');
+  if (dragData.zone === 'tableau' && cards.length > 1) {
+    Array.from($tableau[dragData.pileIdx].children)
+      .slice(dragData.cardIdx)
+      .forEach(c => c.classList.add('drag-ghost'));
+  }
+}
+
+function onTouchMove(e) {
+  if (!dragData) return;
+  e.preventDefault();
+  const touch = e.touches[0];
+
+  if (!touchDragging) {
+    const dx = touch.clientX - touchStartX;
+    const dy = touch.clientY - touchStartY;
+    if (Math.sqrt(dx * dx + dy * dy) < TOUCH_DRAG_THRESHOLD) return;
+    touchDragging = true;
+    _buildDragProxy(touchCardEl, dragData.cards, touchStartX, touchStartY);
+  }
+
+  dragProxy.style.left = (touch.clientX - dragOffX) + 'px';
+  dragProxy.style.top  = (touch.clientY - dragOffY) + 'px';
+
+  const pt = { clientX: touch.clientX, clientY: touch.clientY };
+  [...$foundations, ...$tableau].forEach(el => {
+    el.classList.toggle('drag-over', isOverElement(pt, el) && isValidDropTarget(el));
+  });
+}
+
+function _cleanupTouchDrag() {
+  document.removeEventListener('touchmove',   onTouchMove);
+  document.removeEventListener('touchend',    onTouchEnd);
+  document.removeEventListener('touchcancel', onTouchCancel);
+  document.body.classList.remove('is-dragging');
+  document.querySelectorAll('.drag-ghost').forEach(el => el.classList.remove('drag-ghost'));
+  [...$foundations, ...$tableau].forEach(el => el.classList.remove('drag-over'));
+  if (dragProxy) { dragProxy.remove(); dragProxy = null; }
+}
+
+function onTouchEnd(e) {
+  _cleanupTouchDrag();
+
+  if (!touchDragging) {
+    // Treat as tap – detect double-tap for auto-send
+    const now = Date.now();
+    const el  = touchCardEl;
+    if (el && lastTapEl === el && now - lastTapTime < DOUBLE_TAP_MS) {
+      lastTapEl = null;
+      dragData  = null;
+      onDoubleClick({ currentTarget: el });
+      return;
+    }
+    lastTapEl   = el;
+    lastTapTime = now;
+    dragData    = null;
+    return;
+  }
+
+  if (!dragData) return;
+
+  const touch = e.changedTouches[0];
+  const pt    = { clientX: touch.clientX, clientY: touch.clientY };
+  const target = [...$foundations, ...$tableau].find(
+    el => isOverElement(pt, el) && isValidDropTarget(el)
+  );
+
+  if (target) commitDrop(target);
+  dragData = null;
+}
+
+function onTouchCancel() {
+  _cleanupTouchDrag();
   dragData = null;
 }
 

@@ -177,6 +177,7 @@ button:active { transform: scale(.96); }
   overflow: hidden;
   backface-visibility: hidden;
   will-change: transform;
+  touch-action: none;
 }
 
 .card:not(.face-down) { cursor: grab; }
@@ -501,4 +502,33 @@ body.is-dragging * { cursor: grabbing !important; }
   .card-suit  { font-size: .58rem; }
   .card-center { font-size: 2rem; }
   .win-box { padding: 32px 28px; }
+}
+
+/* ── Mobile (narrow phones) ───────────────────────────────── */
+@media (max-width: 480px) {
+  :root {
+    --pile-w: 44px; --pile-h: 62px;
+    --card-w: 44px; --card-h: 62px;
+    --gap: 4px;
+  }
+  header {
+    padding: 6px 8px; gap: 6px;
+    justify-content: space-between;
+  }
+  .logo  { font-size: .95rem; }
+  .header-center { gap: 6px; }
+  .stat-box { padding: 3px 6px; min-width: 48px; }
+  .stat-label { font-size: .52rem; }
+  .stat-value { font-size: .8rem; }
+  .header-right { gap: 5px; }
+  button { padding: 5px 8px; font-size: .72rem; letter-spacing: .02em; }
+  #game-area { padding: 10px 6px 8px; }
+  .card-rank  { font-size: .58rem; }
+  .card-suit  { font-size: .46rem; }
+  .card-center { font-size: 1.5rem; }
+  .card-corner.top-left  { top: 3px; left: 4px; }
+  .card-corner.bot-right { bottom: 3px; right: 4px; }
+  .win-box { padding: 28px 20px; }
+  .win-box h1 { font-size: 1.8rem; }
+  .help-box { padding: 24px 20px 20px; }
 }
