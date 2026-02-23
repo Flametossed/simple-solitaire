@@ -19,7 +19,7 @@ Simply open `index.html` in a web browser.
 
 ## Deploy to Vercel
 
-This project is ready to deploy to Vercel with zero configuration needed.
+This project is ready to deploy to Vercel with **zero configuration**. Vercel automatically detects and serves static HTML/CSS/JS projects.
 
 ### Option 1: Deploy from GitHub
 
@@ -44,10 +44,6 @@ Vercel will automatically detect the static site and deploy it.
    ```
 
 3. Follow the prompts to complete deployment
-
-### Configuration
-
-The project includes a `vercel.json` configuration file that ensures proper static file serving.
 
 ## How to Play
 
