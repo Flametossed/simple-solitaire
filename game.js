@@ -608,6 +608,160 @@ $helpOverlay.addEventListener('click', e => { if (e.target === $helpOverlay) $he
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $helpOverlay.classList.add('hidden'); });
 
 /* ═══════════════════════════════════════════════════════════════
+   TUTORIAL
+   ═══════════════════════════════════════════════════════════════ */
+const TUTORIAL_STEPS = [
+  {
+    title: 'Welcome to Solitaire! \uD83C\uDCCF',
+    text: "Let's quickly walk through the game so you can start playing with confidence. Click Next to begin.",
+  },
+  {
+    target: '#stock',
+    position: 'right',
+    title: 'Stock Pile',
+    text: 'The face-down draw pile. Click it to flip cards onto the Waste pile one at a time. When empty, click it again to recycle the Waste (\u2212100\u00a0pts).',
+  },
+  {
+    target: '#waste',
+    position: 'right',
+    title: 'Waste Pile',
+    text: 'Cards drawn from the Stock land here. Only the top card is available to play \u2014 drag it to the Tableau or a Foundation.',
+  },
+  {
+    target: '#foundation-0',
+    position: 'bottom',
+    title: 'Foundation Piles',
+    text: 'Your goal! Move all 52 cards here \u2014 one pile per suit (\u2660 \u2665 \u2666 \u2663), built up from Ace to King. Double-click a card to send it here automatically.',
+  },
+  {
+    target: '#tableau-row',
+    position: 'top',
+    title: 'The Tableau',
+    text: 'Your 7 main playing columns. Stack cards in descending rank with alternating colors (e.g.\u00a0red\u00a07 on black\u00a08). Only a King can fill an empty column.',
+  },
+  {
+    title: 'Moving Cards',
+    text: 'Drag any face-up card \u2014 or an entire stack \u2014 to a valid pile. Face-down cards flip when they reach the top of a column. Double-click the top card to auto-send it to its Foundation.',
+  },
+  {
+    target: '#undo-btn',
+    position: 'bottom',
+    title: 'Undo Button',
+    text: 'Made a mistake? Click Undo to take back up to 50 moves. Start a fresh game any time with the New Game button.',
+  },
+  {
+    title: 'You\'re Ready! \uD83C\uDF89',
+    text: 'Good luck! The faster you finish with fewer moves, the higher your score. Now go play!',
+  },
+];
+
+let tutorialStep = 0;
+const $tutorialOverlay   = document.getElementById('tutorial-overlay');
+const $tutorialSpotlight = document.getElementById('tutorial-spotlight');
+const $tutorialTitle     = document.getElementById('tutorial-title');
+const $tutorialText      = document.getElementById('tutorial-text');
+const $tutorialCounter   = document.getElementById('tutorial-step-counter');
+const $tutorialTooltip   = document.getElementById('tutorial-tooltip');
+const $tutorialPrevBtn   = document.getElementById('tutorial-prev-btn');
+const $tutorialNextBtn   = document.getElementById('tutorial-next-btn');
+
+function startTutorial() {
+  $helpOverlay.classList.add('hidden');
+  tutorialStep = 0;
+  $tutorialOverlay.classList.remove('hidden');
+  showTutorialStep();
+}
+
+function showTutorialStep() {
+  const step = TUTORIAL_STEPS[tutorialStep];
+  $tutorialTitle.textContent   = step.title;
+  $tutorialText.textContent    = step.text;
+  $tutorialCounter.textContent = `Step ${tutorialStep + 1} of ${TUTORIAL_STEPS.length}`;
+  $tutorialPrevBtn.disabled    = (tutorialStep === 0);
+  $tutorialNextBtn.textContent = (tutorialStep === TUTORIAL_STEPS.length - 1) ? '\u2713 Done' : 'Next \u2192';
+
+  if (step.target) {
+    const el = document.querySelector(step.target);
+    if (el) {
+      const r   = el.getBoundingClientRect();
+      const PAD = 10;
+      Object.assign($tutorialSpotlight.style, {
+        display: 'block',
+        left:    `${r.left   - PAD}px`,
+        top:     `${r.top    - PAD}px`,
+        width:   `${r.width  + PAD * 2}px`,
+        height:  `${r.height + PAD * 2}px`,
+      });
+      $tutorialOverlay.classList.remove('tutorial-no-target');
+      positionTooltip(r, step.position || 'bottom');
+      return;
+    }
+  }
+
+  // No target — center tooltip
+  $tutorialSpotlight.style.display = 'none';
+  $tutorialOverlay.classList.add('tutorial-no-target');
+  $tutorialTooltip.style.cssText = 'top:50%;left:50%;transform:translate(-50%,-50%);';
+}
+
+function positionTooltip(r, preferred) {
+  const TW            = 320;
+  const TOOLTIP_HEIGHT = 220;
+  const M  = 18;
+  const VW = window.innerWidth;
+  const VH = window.innerHeight;
+  let top, left;
+
+  switch (preferred) {
+    case 'right':
+      top  = r.top;
+      left = r.right + M;
+      break;
+    case 'left':
+      top  = r.top;
+      left = r.left - TW - M;
+      break;
+    case 'top':
+      top  = r.top - M;
+      left = r.left + (r.width / 2) - (TW / 2);
+      left = Math.max(16, Math.min(left, VW - TW - 16));
+      $tutorialTooltip.style.cssText =
+        `top:${Math.max(16, top)}px;left:${left}px;transform:translateY(-100%);`;
+      return;
+    case 'bottom':
+    default:
+      top  = r.bottom + M;
+      left = r.left + (r.width / 2) - (TW / 2);
+      break;
+  }
+
+  top  = Math.max(16, Math.min(top,  VH - TOOLTIP_HEIGHT));
+  left = Math.max(16, Math.min(left, VW - TW - 16));
+  $tutorialTooltip.style.cssText = `top:${top}px;left:${left}px;transform:none;`;
+}
+
+function endTutorial() {
+  $tutorialOverlay.classList.add('hidden');
+}
+
+document.getElementById('tutorial-start-btn').addEventListener('click', startTutorial);
+document.getElementById('tutorial-skip-btn').addEventListener('click', endTutorial);
+$tutorialNextBtn.addEventListener('click', () => {
+  if (tutorialStep < TUTORIAL_STEPS.length - 1) {
+    tutorialStep++;
+    showTutorialStep();
+  } else {
+    endTutorial();
+  }
+});
+$tutorialPrevBtn.addEventListener('click', () => {
+  if (tutorialStep > 0) {
+    tutorialStep--;
+    showTutorialStep();
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════
    BOOTSTRAP
    ═══════════════════════════════════════════════════════════════ */
 setupDropTargets();
